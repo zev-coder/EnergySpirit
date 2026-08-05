@@ -1,14 +1,13 @@
-from fastapi import Depends, FastAPI
-from sqlalchemy.orm import Session
-from App.DB.db import create_db_and_tables, get_async_session
-from App.DB.dependencies.User.user import fastapi_users,auth_backend
-from App.DB.dependencies.User.scheme import UserRead, UserCreate, UserUpdate
 from contextlib import asynccontextmanager
-from App.DB.dependencies.User.router import router
 from pathlib import Path
+
+from fastapi import Depends, FastAPI
+from sqlalchemy.ext.asyncio import AsyncSession
+from App.DB.db import create_db_and_tables, get_async_session
+from App.DB.dependencies.User.router import router
 from App.DB.dependencies.User.scheme import RolesScheme
 from App.DB.model import Roles
-from sqlalchemy.ext.asyncio import AsyncSession
+from App.middleware.CORS import setup_cors
 
 
 # Async mecahnism, to support application based asyncio
@@ -24,6 +23,7 @@ async def lifespan(app: FastAPI):
 
 # MainApp, the heart of application
 app = FastAPI(lifespan=lifespan)
+setup_cors(app)
 
 # Calling available services
 app.include_router(router)
