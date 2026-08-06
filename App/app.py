@@ -1,11 +1,11 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException,status
+from fastapi import Depends, FastAPI, HTTPException,status,Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from App.DB.db import create_db_and_tables, get_async_session
 from App.DB.dependencies.User.router import router
-from App.DB.dependencies.Roles.roles import RolesScheme
+from App.DB.dependencies.Roles.roles import RolesCreate, RolesResponse
 from App.DB.model import Roles
 from App.middleware.CORS import setup_cors
 from sqlalchemy import select
@@ -35,9 +35,9 @@ app.include_router(router)
 logger = logging.getLogger(__name__)
 
 # Roles Payload, to create a role
-@app.post("/roles")
+@app.post("/create_roles")
 async def create_role(
-    payload: RolesScheme,
+    payload: RolesCreate,
     db: AsyncSession = Depends(get_async_session)
 ):
     try:
@@ -66,8 +66,69 @@ async def create_role(
             detail="Server sedang bermasalah"
         )
 
+# Getting all roles within 5
+@app.get('roles-all', response_model=RolesResponse)
+async def get_roles_all(
+        db: AsyncSession = Depends(get_async_session),
+        page: int = Query(1, ge=1),
+        limit: int = Query(10, ge=1, le=100),
+    ):
+        try:
+            get_role =  await db.execute(
+                select(Roles)
+                .offset(page).
+                limit(limit)
+            )
+            result = get_role.scalars().all()
+            return result
 
-# Testing, just testing
-@app.get('/')
-def test():
-    return {'test' : 'test'}
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(
+                status_code=404,
+                detail="Not Found"
+            )
+
+        except Exception as e:
+            logger.exception(e)
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Server sedang bermasalah"
+            )
+
+
+# Getting specific roles within 5
+@app.get('/roles/{roles_id}', response_model=RolesResponse)
+async def get_roles(
+    roles_name: str,
+    db: AsyncSession = Depends(get_async_session),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+):
+    try:
+        get_role =  await db.execute(
+            select(Roles)
+            .offset(page).
+            limit(limit)
+            .where(Roles.roles_name == roles_name)
+        )
+
+        result = get_role.scalars().all()
+
+        return result
+
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=404,
+            detail="Not Found"
+        )
+
+    except Exception as e:
+        logger.exception(e)
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server sedang bermasalah"
+        )

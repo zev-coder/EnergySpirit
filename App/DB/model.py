@@ -21,9 +21,9 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     username: Mapped[str] = mapped_column(String(30), nullable=False)
     roles_id: Mapped[int] = mapped_column(ForeignKey("roles.id"))
 
-    roles: Mapped[list['Roles']] = relationship(back_populates='Users')
-    created_product: Mapped[list['Product']] = relationship(back_populates='Users')
-    carts: Mapped[list['Carts']] = relationship(back_populates='Users')
+    roles: Mapped['Roles'] = relationship(back_populates='users')
+    created_product: Mapped[list['Product']] = relationship(back_populates='users')
+    carts: Mapped[list['Carts']] = relationship(back_populates='users')
 
 # Roles and have relation with User table
 class Roles(Base):
@@ -50,7 +50,8 @@ class Product(Base):
     description: Mapped[str] = mapped_column(Text, nullable=True)
 
     created_by: Mapped[int] = mapped_column(ForeignKey("Users.id"))
-    users: Mapped[list['User']] = relationship(back_populates='product')
+    users: Mapped['User'] = relationship(back_populates='created_product')
+    cartsitem: Mapped[list['Cartsitem']] = relationship(back_populates='product')
 
 
 class Carts(Base):
@@ -61,6 +62,7 @@ class Carts(Base):
 
     users_id: Mapped[int] = mapped_column(ForeignKey("Users.id"))
     users: Mapped[list['User']] = relationship(back_populates='carts')
+    cartsitem: Mapped[list['Cartsitem']] = relationship(back_populates='carts')
 
 class Cartsitem(Base):
     __tablename__ = "cartsitem"
@@ -70,5 +72,5 @@ class Cartsitem(Base):
     product_id: Mapped[int] = mapped_column(ForeignKey("product.id"))
     carts_id: Mapped[int] = mapped_column(ForeignKey("carts.id"))
 
-    product: Mapped[list['Product']] = relationship(back_populates='cartsitem')
-    carts: Mapped[list['Carts']] = relationship(back_populates='cartsitem')
+    product: Mapped['Product'] = relationship(back_populates='cartsitem')
+    carts: Mapped['Carts'] = relationship(back_populates='cartsitem')
