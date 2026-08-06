@@ -1,19 +1,31 @@
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import Enum as SQLEnum, ForeignKey, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, relationship, mapped_column
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
+from enum import Enum
 
+
+# The base of Blueprints
 class Base(DeclarativeBase):
     pass
 
+class Status(Enum):
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    DENIED = "denied"
+
+# User table for auth
 class User(SQLAlchemyBaseUserTableUUID, Base):
     __tablename__ = 'Users'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(30), nullable=False)
     roles_id: Mapped[int] = mapped_column(ForeignKey("roles.id"))
-    roles: Mapped[list['Roles']] = relationship(back_populates='users')
-    created_product: Mapped[list['Product']] = relationship(back_populates='user')
 
+    roles: Mapped[list['Roles']] = relationship(back_populates='Users')
+    created_product: Mapped[list['Product']] = relationship(back_populates='Users')
+    carts: Mapped[list['Carts']] = relationship(back_populates='Users')
+
+# Roles and have relation with User table
 class Roles(Base):
     __tablename__ = "roles"
 
@@ -29,6 +41,7 @@ class Roles(Base):
         back_populates="roles"
     )
 
+#Product table that contain any product item
 class Product(Base):
     __tablename__ = "product"
 
@@ -39,3 +52,23 @@ class Product(Base):
     created_by: Mapped[int] = mapped_column(ForeignKey("Users.id"))
     users: Mapped[list['User']] = relationship(back_populates='product')
 
+
+class Carts(Base):
+    __tablename__ = "carts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    status: Mapped[Enum] = mapped_column(SQLEnum(Status), nullable=False, default=Status.PENDING)
+
+    users_id: Mapped[int] = mapped_column(ForeignKey("Users.id"))
+    users: Mapped[list['User']] = relationship(back_populates='carts')
+
+class Cartsitem(Base):
+    __tablename__ = "cartsitem"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    product_id: Mapped[int] = mapped_column(ForeignKey("product.id"))
+    carts_id: Mapped[int] = mapped_column(ForeignKey("carts.id"))
+
+    product: Mapped[list['Product']] = relationship(back_populates='cartsitem')
+    carts: Mapped[list['Carts']] = relationship(back_populates='cartsitem')
