@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 520" role="img" aria-labelledby="title">
+  <title id="title">Energy Spirit</title>
+  <defs>
+    <linearGradient id="green" x1="140" x2="390" y1="110" y2="310" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8bd34b"/>
+      <stop offset="1" stop-color="#218d34"/>
+    </linearGradient>
+    <linearGradient id="purple" x1="315" x2="525" y1="240" y2="410" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7a45d9"/>
+      <stop offset="1" stop-color="#3f168f"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="4" flood-color="#000" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)">
+    <path fill="url(#green)" d="M248 147 450 38 356 204h76l-120 82 34-98h-86l-34 62h92l-20 34H194z"/>
+    <path fill="url(#purple)" d="M364 205h164L404 410l35-125h-88l66-45h-88z"/>
+  </g>
+  <g font-family="Arial Black, Impact, sans-serif" font-weight="900" text-anchor="middle">
+    <text x="360" y="432" fill="#58b33c" font-size="74" letter-spacing="2">ENERGY</text>
+    <text x="360" y="496" fill="#6f36c9" font-size="72" letter-spacing="2">SPIRIT</text>
+  </g>
+</svg>
