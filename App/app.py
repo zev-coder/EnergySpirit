@@ -1,6 +1,5 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
-
 from fastapi import Depends, FastAPI, HTTPException,status,Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from App.DB.db import create_db_and_tables, get_async_session
@@ -10,7 +9,8 @@ from App.DB.model import Roles
 from App.middleware.CORS import setup_cors
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-import logging
+from App.middleware.logger.logging import logger
+from App.middleware.logger.logging import log_auth_requests
 
 
 # Async mecahnism, to support application based asyncio
@@ -31,8 +31,8 @@ setup_cors(app)
 # Calling available services
 app.include_router(router)
 
-#status code loger or any information
-logger = logging.getLogger(__name__)
+#middleware
+app.middleware("http")(log_auth_requests)
 
 # Roles Payload, to create a role
 @app.post("/create_roles")
@@ -126,6 +126,7 @@ async def get_roles(
         )
 
     except Exception as e:
+
         logger.exception(e)
         await db.rollback()
         raise HTTPException(

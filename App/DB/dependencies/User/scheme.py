@@ -7,8 +7,7 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
 
 class UserCreate(schemas.BaseUserCreate):
     username: str = " "
-
+    roles_id: int = 2
 
 class UserUpdate(schemas.BaseUserUpdate):
     pass
-

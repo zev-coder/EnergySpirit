@@ -17,13 +17,12 @@ class Status(Enum):
 class User(SQLAlchemyBaseUserTableUUID, Base):
     __tablename__ = 'Users'
 
-    id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(30), nullable=False)
-    roles_id: Mapped[int] = mapped_column(ForeignKey("roles.id"))
-
-    roles: Mapped['Roles'] = relationship(back_populates='users')
     created_product: Mapped[list['Product']] = relationship(back_populates='users')
     carts: Mapped[list['Carts']] = relationship(back_populates='users')
+    role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"),nullable=False)
+
+    role: Mapped["Roles"] = relationship(back_populates="users")
 
 # Roles and have relation with User table
 class Roles(Base):
@@ -37,9 +36,7 @@ class Roles(Base):
         nullable=False
     )
 
-    users: Mapped[list["User"]] = relationship(
-        back_populates="roles"
-    )
+    users: Mapped[list["User"]] = relationship(back_populates="role")
 
 #Product table that contain any product item
 class Product(Base):

@@ -1,10 +1,18 @@
-from fastapi import APIRouter
+import email
+
+from argon2 import hash_password
+from fastapi import APIRouter, HTTPException
+from App.DB.db import get_async_session
 from App.DB.dependencies.User.user import fastapi_users, auth_backend
 from App.DB.dependencies.User.scheme import (
     UserRead,
     UserCreate,
     UserUpdate,
 )
+from sqlalchemy.ext.asyncio  import AsyncSession
+from fastapi import Depends
+from sqlalchemy import select
+from App.DB.model import Roles, User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -14,9 +22,35 @@ router.include_router(
     prefix="/jwt",
 )
 
-router.include_router(
-    fastapi_users.get_register_router(UserRead, UserCreate),
-)
+@router.post('/auth/register')
+async def register(
+    payload: UserCreate,
+    db: AsyncSession = Depends(get_async_session)
+):
+    role = await db.scalar(
+        select(Roles)
+        .where(Roles.id == payload.roles_id)
+    )
+
+    if role is None:
+        HTTPException(
+            status_code=404,
+            detail='role tidak ditemukan'
+        )
+    user = User(
+        username=payload.username,
+        hashed_password=payload.password,
+        role_id=payload.roles_id,
+        email = payload.email
+    )
+
+    db.add(user)
+
+    await db.commit()
+    await db.refresh(user)
+
+    return user
+
 
 router.include_router(
     fastapi_users.get_verify_router(UserRead),
