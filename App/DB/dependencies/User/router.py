@@ -2,6 +2,7 @@ import email
 
 from argon2 import hash_password
 from fastapi import APIRouter, HTTPException
+from fastapi_users import password
 from App.DB.db import get_async_session
 from App.DB.dependencies.User.user import fastapi_users, auth_backend
 from App.DB.dependencies.User.scheme import (
@@ -27,6 +28,11 @@ async def register(
     payload: UserCreate,
     db: AsyncSession = Depends(get_async_session)
 ):
+
+    #password hasher
+    from argon2 import PasswordHasher
+    ph = PasswordHasher()
+
     role = await db.scalar(
         select(Roles)
         .where(Roles.id == payload.roles_id)
@@ -39,7 +45,7 @@ async def register(
         )
     user = User(
         username=payload.username,
-        hashed_password=payload.password,
+        hashed_password= ph.hash(payload.password), #hashing password
         role_id=payload.roles_id,
         email = payload.email
     )
