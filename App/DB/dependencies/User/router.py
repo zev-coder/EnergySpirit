@@ -23,7 +23,10 @@ router.include_router(
     prefix="/jwt",
 )
 
-@router.post('/auth/register')
+
+
+
+@router.post('auth/register')
 async def register(
     payload: UserCreate,
     db: AsyncSession = Depends(get_async_session)
@@ -47,7 +50,10 @@ async def register(
         username=payload.username,
         hashed_password= ph.hash(payload.password), #hashing password
         role_id=payload.roles_id,
-        email = payload.email
+        email = payload.email,
+        is_active = payload.is_active,
+        is_superuser = payload.is_superuser,
+        is_verified = payload.is_verified
     )
 
     db.add(user)

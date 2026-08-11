@@ -1,4 +1,5 @@
 from fastapi import Depends, HTTPException, Request
+from fastapi.security import OAuth2PasswordRequestForm
 from fastapi_users import BaseUserManager, UUIDIDMixin
 import uuid
 from App.DB.db import get_async_session, get_user_db
@@ -15,8 +16,8 @@ auth_logger = setup_auth_logging()
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
     def __init__(self, user_db, session: AsyncSession):
-        super.__init__(user_db)
         self.session = session
+        super().__init__(user_db)
 
     reset_password_token_secret = SECRET
     verification_token_secret = SECRET
@@ -49,6 +50,41 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
         await self.session.commit()
         await self.session.refresh(user)
+
+        return user
+
+    async def authenticate(self, credentials):
+        identifier = credentials.username
+
+        # Coba cari berdasarkan email
+        user = await self.user_db.get_by_email(identifier)
+
+        # Kalau bukan email, cari berdasarkan username
+        if user is None:
+            result = await self.session.execute(
+                select(User).where(
+                    User.username == identifier
+                )
+            )
+
+            user = result.scalar_one_or_none()
+
+        if user is None:
+            return None
+
+        verified, updated_password_hash = (
+            self.password_helper.verify_and_update(
+                credentials.password,
+                user.hashed_password
+            )
+        )
+
+        if not verified:
+            return None
+
+        if updated_password_hash is not None:
+            user.hashed_password = updated_password_hash
+            await self.session.commit()
 
         return user
 
