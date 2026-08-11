@@ -1,7 +1,8 @@
-from sqlalchemy import Enum as SQLEnum, ForeignKey, String, Text
+from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, relationship, mapped_column
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from enum import Enum
+from datetime import datetime
 
 
 # The base of Blueprints
@@ -45,6 +46,7 @@ class Product(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(), onupdate=datetime.now)
 
     created_by: Mapped[int] = mapped_column(ForeignKey("Users.id"))
     users: Mapped['User'] = relationship(back_populates='created_product')

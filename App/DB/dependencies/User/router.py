@@ -23,9 +23,6 @@ router.include_router(
     prefix="/jwt",
 )
 
-
-
-
 @router.post('auth/register')
 async def register(
     payload: UserCreate,
