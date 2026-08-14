@@ -30,6 +30,7 @@ fastapi_users = FastAPIUsers[User, UUID](
     [auth_backend],
 )
 
+current_active_user = fastapi_users.current_user(active=True)
 
 
 

@@ -6,12 +6,13 @@ from App.DB.db import create_db_and_tables, get_async_session, get_user_db
 from App.DB.dependencies.Product.products import CreateProduct, ProductResponses
 from App.DB.dependencies.User.router import router
 from App.DB.dependencies.Roles.roles import RolesCreate, RolesResponse
-from App.DB.model import Product, Roles
+from App.DB.model import Product, Roles, User
 from App.middleware.CORS import setup_cors
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from App.middleware.logger.logging import logger
 from App.middleware.logger.logging import log_auth_requests
+from App.DB.dependencies.User.user import current_active_user
 
 
 # Async mecahnism, to support application based asyncio
@@ -100,7 +101,7 @@ async def get_roles_all(
 
 
 # Getting specific roles within 5
-@app.get('/roles/{roles_id}', response_model=RolesResponse)
+@app.get('/roles/{roles_id}', response_model=list[RolesResponse])
 async def get_roles(
     roles_name: str,
     db: AsyncSession = Depends(get_async_session),
@@ -137,7 +138,7 @@ async def get_roles(
 
 
 #getting the list of product
-@app.get('product/', response_model=ProductResponses)
+@app.get('/product', response_model=list[ProductResponses])
 async def product_query(
     session: AsyncSession = Depends(get_async_session),
     page:int = Query(1, ge=1),
@@ -155,19 +156,56 @@ async def product_query(
 
 
 #creating a product
-# @app.post('create-product/')
-# async def create_product(
-#     payload: CreateProduct,
-#     name: str,
-#     description: str,
-#     session: AsyncSession = Depends(get_async_session),
-#     user: AsyncSession = Depends(get_user_db)
-# ):
-#     try:
-#         create = Product(
-#             name=name,
-#             description=description,
-#             created_by=user
-#         )
-#     except:
-#         pass
+@app.post('/create-product')
+async def create_product(
+    payload: CreateProduct,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user)
+):
+    try:
+        create = Product(
+            name=payload.name,
+            description=payload.description,
+            created_by=user.id,
+            price = payload.price
+        )
+
+        session.add(create)
+
+        await session.commit()
+        await session.refresh(create)
+
+        return create
+    except:
+        HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal Server Error"
+        )
+
+#deleting product
+@app.delete("/delete-product/{name}", response_model=ProductResponses)
+async def delete_product(
+    name: str,
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        result = await session.execute(
+            select(Product).where(Product.name == name)
+        )
+
+        product = result.scalar_one_or_none()
+
+
+        if product is None:
+            all_names = (await session.execute(select(Product.name))).scalars().all()
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="didn't match with available product")
+
+        await session.delete(product)
+        await session.commit()
+
+        return product
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail='internal server error'
+        )
