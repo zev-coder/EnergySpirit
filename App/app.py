@@ -38,12 +38,23 @@ app.include_router(router)
 app.middleware("http")(log_auth_requests)
 
 # Roles Payload, to create a role
-@app.post("/create_roles")
+@app.post("/create_roles", response_model=RolesResponse)
 async def create_role(
     payload: RolesCreate,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user)
 ):
     try:
+        role_name = await db.scalar(
+            select(Roles.roles_name).where(Roles.id == user.role_id)
+        )
+
+        if role_name != "MODERATOR":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden"
+            )
+
         role = Roles(**payload.model_dump())
 
         db.add(role)
@@ -185,14 +196,14 @@ async def create_product(
 
 
 #deleting product
-@app.delete("/delete-product/{name}", response_model=ProductResponses)
+@app.delete("/delete-product/{product_id}", response_model=ProductResponses)
 async def delete_product(
-    name: str,
+    product_id: str,
     session: AsyncSession = Depends(get_async_session),
 ):
     try:
         result = await session.execute(
-            select(Product).where(Product.name == name)
+            select(Product).where(Product.name == product_id)
         )
 
         product = result.scalar_one_or_none()

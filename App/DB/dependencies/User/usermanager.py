@@ -1,14 +1,14 @@
-from fastapi import Depends, HTTPException, Request
-from fastapi.security import OAuth2PasswordRequestForm
-from fastapi_users import BaseUserManager, UUIDIDMixin
 import uuid
+
+from fastapi import Depends, HTTPException, Request
+from fastapi_users import BaseUserManager, UUIDIDMixin, exceptions
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from App.DB.db import get_async_session, get_user_db
 from App.DB.dependencies.User.scheme import UserCreate
+from App.DB.model import Roles, User
 from App.middleware.logger.logging import setup_auth_logging
-from App.DB.model import User
-from sqlalchemy.ext.asyncio import AsyncSession
-from App.DB.model import Roles
-from sqlalchemy import select
 
 SECRET = "SECRET"
 auth_logger = setup_auth_logging()
@@ -23,35 +23,39 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     verification_token_secret = SECRET
 
     async def create(
-    self,
-    user_create: UserCreate,
-    safe: bool = False,
-    request: Request | None = None
+        self,
+        user_create: UserCreate,
+        safe: bool = False,
+        request: Request | None = None
     ):
-        role = await self.session.scalar(
-            select(Roles).where(
-                Roles.id == user_create.roles_id
-            )
-        )
+        await self.validate_password(user_create.password, user_create)
 
+        existing_user = await self.user_db.get_by_email(user_create.email)
+        if existing_user is not None:
+            raise exceptions.UserAlreadyExists()
+
+        role = await self.session.scalar(
+            select(Roles).where(Roles.roles_name == "ADMIN")
+        )
         if role is None:
             raise HTTPException(
                 status_code=404,
-                detail="Role tidak ditemukan"
+                detail="Role default user belum tersedia"
             )
 
-        user = await super().create(
-            user_create,
-            safe=safe,
-            request=request
+        user_dict = (
+            user_create.create_update_dict()
+            if safe
+            else user_create.create_update_dict_superuser()
         )
+        password = user_dict.pop("password")
+        user_dict["hashed_password"] = self.password_helper.hash(password)
+        user_dict["role_id"] = role.id
 
-        user.role_id = role.id
+        created_user = await self.user_db.create(user_dict)
+        await self.on_after_register(created_user, request)
 
-        await self.session.commit()
-        await self.session.refresh(user)
-
-        return user
+        return created_user
 
     async def authenticate(self, credentials):
         identifier = credentials.username
@@ -115,4 +119,3 @@ async def get_user_manager(
         session: AsyncSession = Depends(get_async_session)
         ):
     yield UserManager(user_db, session)
-
