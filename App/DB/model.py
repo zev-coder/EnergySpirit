@@ -1,5 +1,6 @@
 import decimal
 
+from pydantic import EmailStr
 from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, String, Text,Numeric
 from sqlalchemy.orm import DeclarativeBase, Mapped, relationship, mapped_column
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
@@ -22,7 +23,7 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
 
     username: Mapped[str] = mapped_column(String(30), nullable=False)
     created_product: Mapped[list['Product']] = relationship(back_populates='users')
-    carts: Mapped[list['Carts']] = relationship(back_populates='users')
+
     role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"),nullable=False)
 
     role: Mapped["Roles"] = relationship(back_populates="users")
@@ -41,6 +42,7 @@ class Roles(Base):
 
     users: Mapped[list["User"]] = relationship(back_populates="role")
 
+
 #Product table that contain any product item
 class Product(Base):
     __tablename__ = "product"
@@ -53,26 +55,46 @@ class Product(Base):
 
     created_by: Mapped[int] = mapped_column(ForeignKey("Users.id"))
     users: Mapped['User'] = relationship(back_populates='created_product')
-    cartsitem: Mapped[list['Cartsitem']] = relationship(back_populates='product')
+
+    #order relationship
+    order: Mapped['Order'] = relationship(back_populates='product')
 
 
-class Carts(Base):
-    __tablename__ = "carts"
+#Order transaction
+class Order(Base):
+    __tablename__ = "orders"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    status: Mapped[Enum] = mapped_column(SQLEnum(Status), nullable=False, default=Status.PENDING)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
-    users_id: Mapped[int] = mapped_column(ForeignKey("Users.id"))
-    users: Mapped[list['User']] = relationship(back_populates='carts')
-    cartsitem: Mapped[list['Cartsitem']] = relationship(back_populates='carts')
+    # =========================
+    # CUSTOMER
+    # =========================
 
-class Cartsitem(Base):
-    __tablename__ = "cartsitem"
+    customer_email: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    customer_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    customer_phone: Mapped[str] = mapped_column( String(20), nullable=False)
+
+    # =========================
+    # DELIVERY ADDRESS
+    # =========================
+    address_detail: Mapped[str] = mapped_column(Text, nullable=False)
+    village: Mapped[str] = mapped_column(String(100), nullable=False)
+    district: Mapped[str] = mapped_column(String(100), nullable=False)
+    city: Mapped[str] = mapped_column(String(100), nullable=False)
+    province: Mapped[str] = mapped_column(String(100), nullable=False)
+    postal_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    delivery_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # =========================
+    # TRANSACTION
+    # =========================
+
+    total_amount: Mapped[decimal.Decimal] = mapped_column(Numeric(12, 2),nullable=False)
+    status: Mapped[Enum] = mapped_column(SQLEnum(Status), default=Status.PENDING, nullable=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     product_id: Mapped[int] = mapped_column(ForeignKey("product.id"))
-    carts_id: Mapped[int] = mapped_column(ForeignKey("carts.id"))
+    product: Mapped['Product'] = relationship(back_populates='order')
 
-    product: Mapped['Product'] = relationship(back_populates='cartsitem')
-    carts: Mapped['Carts'] = relationship(back_populates='cartsitem')
+

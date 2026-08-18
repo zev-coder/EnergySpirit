@@ -1,5 +1,3 @@
-import email
-
 from argon2 import hash_password
 from fastapi import APIRouter, HTTPException
 from fastapi_users import password
@@ -12,11 +10,12 @@ from App.DB.dependencies.User.scheme import (
 )
 from sqlalchemy.ext.asyncio  import AsyncSession
 from fastapi import Depends
-from sqlalchemy import select
+from sqlalchemy import Select, select, update
 from App.DB.model import Roles, User
+from App.DB.dependencies.User.user import current_active_user
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
 
 router.include_router(
     fastapi_users.get_auth_router(auth_backend),
@@ -38,11 +37,18 @@ async def register(
         .where(Roles.id == payload.roles_id)
     )
 
-    if role is None:
-        HTTPException(
+    role_id = (
+        await db.execute(
+            select(Roles.id).where(Roles.id == payload.roles_id)
+        )
+    ).scalar()
+
+    if payload.roles_id != role_id:
+        raise HTTPException(
             status_code=404,
             detail='role tidak ditemukan'
         )
+
     user = User(
         username=payload.username,
         hashed_password= ph.hash(payload.password), #hashing password
@@ -60,6 +66,21 @@ async def register(
 
     return user
 
+
+@router.patch("/auth/change-username")
+async def change_username(
+    payload: UserUpdate,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    user.username = payload.username
+
+    await session.commit()
+    await session.refresh(user)
+
+    return {
+        "message": "Username berhasil diubah"
+    }
 
 router.include_router(
     fastapi_users.get_verify_router(UserRead),
