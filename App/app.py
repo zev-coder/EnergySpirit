@@ -7,7 +7,7 @@ from App.DB.dependencies.Product.products import CreateProduct, ProductResponses
 from App.DB.dependencies.User.router import router
 from App.DB.dependencies.Roles.roles import RolesCreate, RolesResponse
 from App.DB.dependencies.Order.order import OrderRead, OrderUpdate
-from App.DB.model import Order, Product, Roles, User
+from App.DB.model import Order, Product, Roles, Status as OrderStatus, User
 from App.middleware.CORS import setup_cors
 from sqlalchemy import Select, delete, select
 from sqlalchemy.exc import IntegrityError
@@ -261,6 +261,8 @@ async def create_order(
 
     # Masukkan hasil query ke payload
     data["product_id"] = product.id
+    data["total_amount"] = product.price
+    data["status"] = OrderStatus.PENDING
 
     # Buat entity Order
     order = Order(**data)

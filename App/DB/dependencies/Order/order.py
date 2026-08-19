@@ -19,20 +19,19 @@ class OrderBase(BaseModel):
 
 
 class OrderUpdate(BaseModel):
-    customer_email: str | None = None
-    customer_name: str | None = None
-    customer_phone: str | None = None
+    customer_email: str
+    customer_name: str
+    customer_phone: str
 
-    address_detail: str | None = None
-    village: str | None = None
-    district: str | None = None
-    city: str | None = None
-    province: str | None = None
+    address_detail: str
+    village: str
+    district: str
+    city: str
+    province: str
     postal_code: str | None = None
 
     delivery_note: str | None = None
 
-    status: str | None = None
     product_id: int
 
 

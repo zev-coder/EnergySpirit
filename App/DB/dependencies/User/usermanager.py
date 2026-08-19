@@ -1,16 +1,15 @@
+import os
 import uuid
-
 from fastapi import Depends, HTTPException, Request
 from fastapi_users import BaseUserManager, UUIDIDMixin, exceptions
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from App.DB.db import get_async_session, get_user_db
 from App.DB.dependencies.User.scheme import UserCreate
 from App.DB.model import Roles, User
 from App.middleware.logger.logging import setup_auth_logging
 
-SECRET = "SECRET"
+SECRET = os.environ['EFVMKEDSCDKEOQV']
 auth_logger = setup_auth_logging()
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
