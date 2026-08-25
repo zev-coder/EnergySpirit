@@ -1,15 +1,15 @@
-import os
 import uuid
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, UploadFile
 from fastapi_users import BaseUserManager, UUIDIDMixin, exceptions
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from App.config import get_settings
 from App.DB.db import get_async_session, get_user_db
 from App.DB.dependencies.User.scheme import UserCreate
 from App.DB.model import Roles, User
 from App.middleware.logger.logging import setup_auth_logging
 
-SECRET = os.environ['EFVMKEDSCDKEOQV']
+SECRET = get_settings().GET_SECRET
 auth_logger = setup_auth_logging()
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
@@ -23,6 +23,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
     async def create(
         self,
+        photo: UploadFile,
         user_create: UserCreate,
         safe: bool = False,
         request: Request | None = None
@@ -36,11 +37,19 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         role = await self.session.scalar(
             select(Roles).where(Roles.roles_name == "ADMIN")
         )
+
+
         if role is None:
             raise HTTPException(
                 status_code=404,
                 detail="Role default user belum tersedia"
             )
+
+        filename = f"{uuid.uuid4()}_photo.filename"
+        file_path = f'uploads/{filename}'
+
+        with open(file_path, 'wb') as file:
+            file.write(await photo.read())
 
         user_dict = (
             user_create.create_update_dict()
@@ -50,7 +59,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         password = user_dict.pop("password")
         user_dict["hashed_password"] = self.password_helper.hash(password)
         user_dict["role_id"] = role.id
-
+        user_dict['image'] = file_path
         created_user = await self.user_db.create(user_dict)
         await self.on_after_register(created_user, request)
 

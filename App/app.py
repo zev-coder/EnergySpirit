@@ -1,13 +1,14 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import Depends, FastAPI, HTTPException,status,Query
+import uuid
+from fastapi import Depends, FastAPI, HTTPException,status,Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from App.DB.db import create_db_and_tables, get_async_session, get_user_db
 from App.DB.dependencies.Product.products import CreateProduct, ProductResponses
 from App.DB.dependencies.User.router import router
 from App.DB.dependencies.Roles.roles import RolesCreate, RolesResponse
 from App.DB.dependencies.Order.order import OrderRead, OrderUpdate
-from App.DB.model import Order, Product, Roles, Status as OrderStatus, User
+from App.DB.model import Order, Product, Roles, OrderStatus, User
 from App.middleware.CORS import setup_cors
 from sqlalchemy import Select, delete, select
 from sqlalchemy.exc import IntegrityError
@@ -81,7 +82,7 @@ async def create_role(
         )
 
 # Getting all roles within 5
-@app.get('roles-all', response_model=RolesResponse)
+@app.get('/roles-all', response_model=RolesResponse)
 async def get_roles_all(
         db: AsyncSession = Depends(get_async_session),
         page: int = Query(1, ge=1),
@@ -171,15 +172,47 @@ async def product_query(
 @app.post('/create-product')
 async def create_product(
     payload: CreateProduct,
+    photo: UploadFile,
     session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_active_user)
+    user: User = Depends(current_active_user),
 ):
     try:
+
+        role_name = await session.scalar(
+            select(Roles.roles_name).where(Roles.id == user.role_id)
+        )
+
+        if role_name != "MODERATOR":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden"
+            )
+
+        allowed_photo = {
+            "image/jpg",
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+        }
+
+        if photo.content_type not in allowed_photo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='must be an image'
+            )
+
+        filename = f"{uuid.uuid4()}_photo.filename"
+        file_path = f'uploads/{filename}'
+
+        with open(file_path, 'wb') as file:
+            file.write(await photo.read())
+
         create = Product(
             name=payload.name,
             description=payload.description,
-            created_by=user.id,
-            price = payload.price
+            created_by= user.id,
+            price = payload.price,
+            image=file_path,
         )
 
         session.add(create)
@@ -188,7 +221,12 @@ async def create_product(
         await session.refresh(create)
 
         return create
+
+    except HTTPException:
+        raise
+
     except:
+        await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal Server Error"
@@ -238,7 +276,7 @@ async def get_chart(
 
 
 #making cart
-@app.post('/create-Order/')
+@app.post('/order')
 async def create_order(
     payload: OrderUpdate,
     session: AsyncSession = Depends(get_async_session),
@@ -273,3 +311,30 @@ async def create_order(
     await session.refresh(order)
 
     return order
+
+@app.post('/order/purchase')
+async def purchase_item(
+    payload: OrderUpdate,
+    session: AsyncSession = Depends(get_async_session),
+):
+    data = payload.model_dump()
+    confirmed = OrderStatus.CONFIRMED
+
+    order = await session.execute(
+        select(Order).where(Order.id == data['id'])
+    )
+
+    order_result = order.scalar_one_or_none()
+
+    if order_result.status == 'pending': #type: ignore
+        data['status'] = confirmed
+        data_entity = Order(**data)
+
+        #stripe logic state
+
+    session.add(data)
+
+    await session.commit()
+    await session.refresh(data)
+
+    return data

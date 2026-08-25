@@ -1,13 +1,14 @@
 # THIS FILE IS USED FOR MANAGING HOW THE DB WORKS
 
-from pydantic_settings import BaseSettings
 from functools import lru_cache
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     '''application settings load evirovement'''
 
     # DATABASE FORMAT, YOU CAN CHANGE DB AS U CAN WITH CERTAIN DB
     DATABASE_URL: str = "sqlite+aiosqlite:///./database.db"
+    GET_SECRET: str = ""
 
     # Connection Pool Settings
     db_pool_size: int = 5
@@ -20,6 +21,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = '.env'
+        extra = 'ignore'
 
 @lru_cache()
 def get_settings() -> Settings:

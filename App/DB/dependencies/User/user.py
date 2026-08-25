@@ -1,9 +1,9 @@
 from uuid import UUID
 from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import BearerTransport, JWTStrategy, AuthenticationBackend
+from App.config import get_settings
 from App.DB.dependencies.User.usermanager import get_user_manager
 from App.DB.model import User
-import os
 #Using Bearer token to authentication the process
 bearer_transport = BearerTransport(
     tokenUrl='auth/jwt/login'
@@ -14,7 +14,7 @@ bearer_transport = BearerTransport(
 
 def get_jwt_strategy():
     return JWTStrategy(
-        secret=os.environ['GET_SECRET'],
+        secret=get_settings().GET_SECRET,
         lifetime_seconds=3600
 )
 
