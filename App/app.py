@@ -38,13 +38,13 @@ app.include_router(router)
 #middleware
 app.middleware("http")(log_auth_requests)
 
-# Roles Payload, to create a role
 @app.post("/create_roles", response_model=RolesResponse)
 async def create_role(
     payload: RolesCreate,
     db: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_user)
 ):
+    """Membuat role baru. Hanya pengguna dengan role MODERATOR yang diizinkan."""
     try:
         role_name = await db.scalar(
             select(Roles.roles_name).where(Roles.id == user.role_id)
@@ -81,13 +81,14 @@ async def create_role(
             detail="Server sedang bermasalah"
         )
 
-# Getting all roles within 5
+
 @app.get('/roles-all', response_model=RolesResponse)
 async def get_roles_all(
         db: AsyncSession = Depends(get_async_session),
         page: int = Query(1, ge=1),
         limit: int = Query(10, ge=1, le=100),
     ):
+        """Mengambil daftar role dengan pagination."""
         try:
             get_role =  await db.execute(
                 select(Roles)
@@ -113,7 +114,6 @@ async def get_roles_all(
             )
 
 
-# Getting specific roles within 5
 @app.get('/roles/{roles_id}', response_model=list[RolesResponse])
 async def get_roles(
     roles_name: str,
@@ -121,6 +121,7 @@ async def get_roles(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
 ):
+    """Mengambil role berdasarkan nama role."""
     try:
         get_role =  await db.execute(
             select(Roles)
@@ -150,13 +151,13 @@ async def get_roles(
         )
 
 
-#getting the list of product
 @app.get('/product', response_model=list[ProductResponses])
 async def product_query(
     session: AsyncSession = Depends(get_async_session),
     page:int = Query(1, ge=1),
     limit: int = Query(5, ge=1, le=100)
 ):
+    """Mengambil daftar produk dengan pagination."""
     query = await session.execute(
         select(Product)
         .offset(page)
@@ -168,7 +169,6 @@ async def product_query(
     return result
 
 
-#creating a product
 @app.post('/create-product')
 async def create_product(
     payload: CreateProduct,
@@ -176,6 +176,7 @@ async def create_product(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_user),
 ):
+    """Membuat produk baru beserta foto. Hanya MODERATOR yang diizinkan."""
     try:
 
         role_name = await session.scalar(
@@ -233,12 +234,12 @@ async def create_product(
         )
 
 
-#deleting product
 @app.delete("/delete-product/{product_id}", response_model=ProductResponses)
 async def delete_product(
     product_id: str,
     session: AsyncSession = Depends(get_async_session),
 ):
+    """Menghapus produk berdasarkan nama produk."""
     try:
         result = await session.execute(
             select(Product).where(Product.name == product_id)
@@ -262,7 +263,6 @@ async def delete_product(
         )
 
 
-#reading chart responses
 @app.get('/chart')
 async def get_chart(
     payload: OrderRead,
@@ -270,18 +270,19 @@ async def get_chart(
     page:int = Query(1, ge=1),
     limit: int = Query(5, ge=1, le=100)
 ):
+    """Mengambil data keranjang atau order."""
     cart = await session.execute(Select(Order))
 
     return cart
 
 
-#making cart
 @app.post('/order')
 async def create_order(
     payload: OrderUpdate,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_user)
 ):
+    """Membuat order baru untuk produk yang dipilih pengguna."""
     # Cari product
     result = await session.execute(
         select(Product).where(Product.id == payload.product_id))
@@ -312,11 +313,13 @@ async def create_order(
 
     return order
 
+
 @app.post('/order/purchase')
 async def purchase_item(
     payload: OrderUpdate,
     session: AsyncSession = Depends(get_async_session),
 ):
+    """Memproses pembelian order yang masih berstatus pending."""
     data = payload.model_dump()
     confirmed = OrderStatus.CONFIRMED
 
