@@ -9,6 +9,7 @@ dependencies = [
     "fastapi-users[sqlalchemy]>=15.0.5",
     "fastapi[standarts]>=0.139.2",
     "pydantic-settings>=2.14.2",
+    "python-dotenv>=1.0.0",
     "sqlalchemy>=2.0.51",
     "uvicorn>=0.51.0",
 ]

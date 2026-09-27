@@ -4,4 +4,5 @@ fastapi-users[sqlalchemy]
 uvicorn[standard]
 aiosqlite
 pydantic_settings
+python-dotenv
 functools

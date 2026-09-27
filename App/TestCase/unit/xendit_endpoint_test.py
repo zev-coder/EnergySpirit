@@ -20,16 +20,21 @@ def test_create_invoice(mock_post):
 
     mock_post.return_value = mock_response
     order_id = UUID("12345678-1234-5678-1234-567812345678")
+    mock_settings = Mock(XENDIT_SECRET_API="test-secret")
 
-    result = create_invoice(
-        product="product",
-        external_id="ignored-input",
-        amount_id=10000,
-        payer_email="john@example.com",
-        description="Test",
-        currency="IDR",
-        order_id=order_id,
-    )
+    with patch(
+        "App.DB.dependencies.Xendit.xendit_payment_logic.get_settings",
+        return_value=mock_settings,
+    ):
+        result = create_invoice(
+            product="product",
+            external_id="ignored-input",
+            amount_id=10000,
+            payer_email="john@example.com",
+            description="Test",
+            currency="IDR",
+            order_id=order_id,
+        )
 
     assert result.uuid == order_id
     assert result.external_id == "ORDER-Product-12345678-1234-5678-1234-567812345678"
@@ -45,3 +50,4 @@ def test_create_invoice(mock_post):
         "description": "Test",
         "currency": "IDR",
     }
+    assert mock_post.call_args.kwargs["headers"]["Authorization"] == "Basic dGVzdC1zZWNyZXQ6"

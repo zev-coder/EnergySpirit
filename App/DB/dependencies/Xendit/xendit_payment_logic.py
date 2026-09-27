@@ -1,25 +1,12 @@
 from base64 import b64encode
-from uuid import UUID, uuid4
+from uuid import UUID
 from pydantic import EmailStr
 import requests
-from App.DB.model import Order
 from App.config import get_settings
 from App.DB.dependencies.Xendit.xendit import (
     CreateXenditPayment,
     XenditPaymentResponses
 )
-import random
-import string
-import os
-from dotenv import load_dotenv
-import uuid
-
-
-load_dotenv()
-
-chars = string.ascii_letters + string.digits
-hasil = ''.join(random.choice(chars) for i in range(4))
-auth_key = os.getenv('XENDIT_SECRET_API')
 
 def create_invoice(product:str ,external_id: str, amount_id:float, payer_email:EmailStr, description:str,currency:str, order_id:UUID) -> XenditPaymentResponses:
 
@@ -32,6 +19,7 @@ def create_invoice(product:str ,external_id: str, amount_id:float, payer_email:E
         currency= currency
     )
 
+    auth_key = get_settings().XENDIT_SECRET_API
 
     headers = {
         "Authorization": f"Basic {b64encode(f'{auth_key}:'.encode()).decode()}",
