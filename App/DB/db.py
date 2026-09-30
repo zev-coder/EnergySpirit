@@ -6,6 +6,8 @@ from fastapi import Depends
 from fastapi_users import FastAPIUsers
 import uuid
 from App.config import get_settings
+from App.DB.dependencies.Roles.roles import RolesCreate
+from App.DB.model import Roles
 
 
 settings = get_settings()
@@ -38,6 +40,17 @@ async_local_session = async_sessionmaker(
 async def create_db_and_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+async def create_setup_role():
+    async with async_local_session() as session:
+        roles = {
+            "MEMBER": RolesCreate(roles_name="MEMBER"),
+            "MODERATOR": RolesCreate(roles_name="MODERATOR"),
+        }
+        for i in roles.values():
+            role = Roles(**i.model_dump())
+            session.add(role)
+        await session.commit()
 
 
 #giving a query to client

@@ -3,7 +3,7 @@ from pathlib import Path
 import uuid
 from fastapi import Depends, FastAPI, HTTPException,status,Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
-from App.DB.db import create_db_and_tables, get_async_session, get_user_db
+from App.DB.db import create_db_and_tables, get_async_session, get_user_db,create_setup_role
 from App.DB.dependencies.Product.products import CreateProduct, ProductResponses
 from App.DB.dependencies.User.router import router
 from App.DB.dependencies.Roles.roles import RolesCreate, RolesResponse
@@ -24,6 +24,7 @@ async def lifespan(app: FastAPI):
     if not DB_FILE.exists():
         print("Database not found. Creating...")
         await create_db_and_tables()
+        await create_setup_role()
     else:
         print("Database already exists.")
     yield
