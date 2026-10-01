@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Request
+from typing import Annotated
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from App.DB.db import get_async_session
 from App.DB.dependencies.User.user import (
     auth_backend,
@@ -38,13 +39,22 @@ async def change_username(
         "message": "Username berhasil diubah"
     }
 
-@router.post("/register", response_model=UserRead, dependencies=[Depends(current_superuser)])
+@router.post("/register", response_model=UserRead, status_code=201)
 async def create_user(
-    payload: UserCreate,
     request: Request,
+    email: Annotated[str, Form()],
+    password: Annotated[str, Form()],
+    username: Annotated[str, Form()] = " ",
+    photo: Annotated[UploadFile | None, File()] = None,
     user_manager=Depends(get_user_manager),
 ):
-    created_user = await user_manager.create(payload, safe=True, request=request)
+    payload = UserCreate(email=email, password=password, username=username)
+    created_user = await user_manager.create(
+        photo=photo,
+        user_create=payload,
+        safe=True,
+        request=request,
+    )
     return UserRead.model_validate(created_user)
 
 router.include_router(

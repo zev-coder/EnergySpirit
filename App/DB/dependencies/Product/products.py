@@ -11,6 +11,7 @@ class CreateProduct(BaseModel):
     name: str
     description:str
     price: Decimal = Field(gt=0)
+    quantity: int = Field(default=1, ge=1)
 
 
 

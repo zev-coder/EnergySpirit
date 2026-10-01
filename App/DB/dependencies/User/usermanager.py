@@ -1,5 +1,4 @@
 import uuid
-from pathlib import Path
 from fastapi import Depends, HTTPException, Request, UploadFile
 from fastapi_users import BaseUserManager, UUIDIDMixin, exceptions
 from sqlalchemy import select
@@ -12,12 +11,9 @@ from App.middleware.logger.logging import setup_auth_logging
 
 SECRET = get_settings().GET_SECRET
 auth_logger = setup_auth_logging()
-APP_DIR = Path(__file__).resolve().parents[3]
-UPLOAD_DIR = APP_DIR / "uploads"
-PROJECT_DIR = APP_DIR.parent
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
-    """ Manager untuk mengelola operasi terkait pengguna. """
+
     def __init__(self, user_db, session: AsyncSession):
         self.session = session
         super().__init__(user_db)
@@ -27,9 +23,9 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
     async def create(
         self,
+        photo: UploadFile,
         user_create: UserCreate,
         safe: bool = False,
-        photo: UploadFile | None = None,
         request: Request | None = None
     ):
         await self.validate_password(user_create.password, user_create)
@@ -49,18 +45,14 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
                 detail="Role default user belum tersedia"
             )
 
-        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        filename = f"{uuid.uuid4()}_photo.jpeg"
+        file_path = f'uploads/{filename}'
+
         if photo is not None:
-            extension = Path(photo.filename or "").suffix
-            filename = f"{uuid.uuid4()}{extension}"
-            image_path = UPLOAD_DIR / filename
-
-            with image_path.open("wb") as file:
-                file.write(await photo.read())
+            with open(file_path, "wb") as f:
+                f.write(await photo.read())
         else:
-            image_path = UPLOAD_DIR / "default-user.svg"
-
-        file_path = str(image_path.relative_to(PROJECT_DIR))
+            file_path = "uploads/default.png"
 
         user_dict = (
             user_create.create_update_dict()
